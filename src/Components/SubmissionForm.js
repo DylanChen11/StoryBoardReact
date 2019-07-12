@@ -9,6 +9,8 @@ class SubmissionForm extends React.Component {
         points: 0,
         columnId: 'column1',
         phase: 1,
+        link: '',
+        sprint:0,
         err: {
             name: '',
             points: ''
@@ -30,10 +32,22 @@ class SubmissionForm extends React.Component {
             points: this.state.points,
             columnId: this.state.columnId,
             phase: this.state.phase,
+            link: this.state.link,
+            sprint: this.state.sprint
         }
 
         this.props.submit(newItem)
         this.props.close()
+    }
+
+    generateOptions = () => {
+        const options = []
+        let current = 1 
+        while(current <= this.props.numberOfPhases){
+            options.push(<option value={current}> {current} </option>)
+            current += 1 
+        }
+        return options
     }
 
 
@@ -51,12 +65,15 @@ class SubmissionForm extends React.Component {
                         <Form.Control type='number' rows='1' />
                     </Form.Group>
 
+                    <Form.Group controlId='sprint' onChange={this.handleChange}>
+                        <Form.Label>Sprint Number</Form.Label>
+                        <Form.Control type='number' rows='1' />
+                    </Form.Group>
+
                     <Form.Group controlId="phase" onChange={this.handleChange}>
                         <Form.Label>Phase</Form.Label>
                         <Form.Control as="select">
-                            <option value={1}>1</option>
-                            <option value={2}>2</option>
-                            <option value={3}>3</option>
+                           {this.generateOptions()}
                         </Form.Control>
                     </Form.Group>
 
@@ -69,6 +86,11 @@ class SubmissionForm extends React.Component {
                             <option value={'column4'}>Ready for Prod</option>
                             <option value={'column5'}>Done</option>
                         </Form.Control>
+                    </Form.Group>
+
+                    <Form.Group controlId='link' onChange={this.handleChange}>
+                        <Form.Label>Jira Link</Form.Label>
+                        <Form.Control type='text' rows='1' />
                     </Form.Group>
 
                     <Button variant="primary" type="submit" onClick={this.handleSubmit}>

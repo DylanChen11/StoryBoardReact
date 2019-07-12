@@ -44,7 +44,7 @@ class Chart extends React.Component {
     }
 
     render() {
-        const columnIds = Object.keys(this.props.state.columns).map(id => this.props.state.columns[id].title)
+        const columnIds = Object.keys(this.props.state.columns).map(id => this.props.state.columns[id].name)
         return (
             <div style={{ paddingBottom: "20px" }}>
                 {this.state.totals.reduce((a, b) => { return a + b }, 0) === 0 ?

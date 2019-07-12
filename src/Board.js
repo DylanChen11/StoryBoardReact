@@ -14,7 +14,9 @@ import { sys } from 'typescript';
 import { FontAwesomeIcon} from '@fortawesome/react-fontawesome'
 import { faFileExcel} from '@fortawesome/free-solid-svg-icons'
 import { faPlusCircle} from '@fortawesome/free-solid-svg-icons'
+import { faMinusCircle} from '@fortawesome/free-solid-svg-icons'
 import { DropDown}  from '@sebgroup/react-components/dist/DropDown'
+// import Dropdown from 'react-bootstrap/Dropdown'
 import { Loader } from '@sebgroup/react-components/dist/Loader'
 
 class Board extends React.Component {
@@ -24,10 +26,12 @@ class Board extends React.Component {
         showAdd: false,
         dataRetrieved: false,
         showFiltered: false,
-        // totals : [0,0,0,0,0],
+        phases: 0,
+        selectedPhase: 0,
         colors: ['sandybrown', 'violet', 'khaki', 'deepskyblue', 'springgreen'],
         dropDownSelected:"All",
-        dropDownList:[{label:"1", value: "Phase1"},{label:"2", value: "Phase2"},{label:"3", value: "Phase3"},{label:"All", value: "All"}],
+        dropDownList:[]
+        // dropDownList:[{label:"1", value: "Phase1"},{label:"2", value: "Phase2"},{label:"3", value: "Phase3"},{label:"All", value: "All"}],
     };
 
     componentWillUnmount() {
@@ -36,8 +40,14 @@ class Board extends React.Component {
 
     colorChange = (index, newColor) => {
         let a = this.state.colors.map(x => x)
+        console.log(a)
         a[index] = newColor
-        this.setState({ colors: a })
+        fetch('api/columns', {
+            method: 'POST',
+            headers: new Headers({ 'content-type': 'application/json' }),
+            body: JSON.stringify({id:`column${index}`, name: this.state.initialData.columns[`column${index}`].name , color: newColor})
+        }).then(() => this.setState({ colors: a }))
+        
     }
 
     componentDidMount() {
@@ -50,11 +60,39 @@ class Board extends React.Component {
 
         // this.setState({ totals: this.getCounts()})
         this.getAllData()
+        // setTimeout(()=>{this.generateOptions()}, 500)
+        
     }
 
     getAllData = () => {
-        fetch('/api/tasks').then(response => response.json())
-            .then(data => this.formatData(data))
+        
+        // fetch number of phases 
+        fetch('/api/phases').then(response => response.json())
+            .then(data => this.setState({phases: Number(data.phases)}))
+
+        // fetch column data 
+        fetch('/api/columns').then(response => response.json())
+            .then(data => {
+                const newColumns = {}
+                data.forEach(column => newColumns[column.id] = column)
+                const columnOrder = Object.keys(newColumns)
+               
+                const colData = {
+                    ...this.state.initialData,
+                    columns: newColumns,
+                    columnOrder: columnOrder
+                }
+               
+                console.log(columnOrder)
+                this.setState({initialData: colData},)
+            })
+
+            // fetch tasks available 
+            .then(
+                fetch('/api/tasks').then(response => response.json())
+                .then(data => this.formatData(data))
+            )
+            .then(() => this.generateOptions())
     }
 
 
@@ -308,8 +346,7 @@ class Board extends React.Component {
     }
 
     submitStory = (response) => {
-        console.log(response)
-        console.log(this.state.initialData.tasks)
+        console.log('>>>>>>>>>>>>>>>>>>>>>>', response)
         
 
         const newTasks = this.state.initialData.tasks;
@@ -320,6 +357,8 @@ class Board extends React.Component {
             points: Number(response.points),
             stage: response.columnId,
             phase: Number(response.phase),
+            sprint: Number(response.sprint),
+            link: response.link,
             relativePosition: newTasks[response.id] && newTasks[response.id].relativePosition !== undefined ? newTasks[response.id].relativePosition : Object.keys(newTasks).filter(key => newTasks[key].stage === response.columnId).length,
             filteredRelativePosition: newTasks[response.id] && newTasks[response.id].filteredRelativePosition !== undefined ? newTasks[response.id].filteredRelativePosition : Object.keys(newTasks).filter(key => Number(newTasks[key].phase) === Number(response.phase) && newTasks[key].stage === response.columnId).length
         }
@@ -401,17 +440,18 @@ class Board extends React.Component {
     }
 
 
-    handleFilter = (num) => {
-        if (Number(num) > 0) {
-            fetch(`/api/tasks?phase=${Number(num)}`).then(res => res.json())
+    handleFilter = (e) => {
+        const num = e 
+        if (num > 0) {
+            fetch(`/api/tasks?phase=${num}`).then(res => res.json())
                 .then(data => {
-                    this.setState({dataRetrieved: false, showFiltered: true }, () => setTimeout(() => {
+                    this.setState({dataRetrieved: false, showFiltered: true, selectedPhase: num}, () => setTimeout(() => {
                         this.formatData(data);
                     }, 300))
                 })
         }
         else {
-            this.setState({dataRetrieved: false, showFiltered: false},  () => setTimeout(() => {
+            this.setState({dataRetrieved: false, showFiltered: false, selectedPhase: 0},  () => setTimeout(() => {
                 this.getAllData();
             }, 300))
         }
@@ -448,10 +488,106 @@ class Board extends React.Component {
         }
     }
 
+    generateOptions = () => {
+        const options = []
+        let current = 1
+        console.log("phase",this.state.phases)
+        while (current <= this.state.phases){
+            options.push({label:`${current}`, value:`Phase${current}`})
+            current+=1
+        }
+        options.push({label:"All", value: "All"})
+        this.setState({
+            dropDownList:options
+        })
+        console.log("dropdown", this.state.dropDownList)
+        // const options = []
+        // let current = 1
+        // while (current <= this.state.phases){
+        //     options.push(<Dropdown.Item as="button" name={current} onClick={this.handleFilter}> Phase {current}</Dropdown.Item>)
+        //     current += 1
+        // }
+        // return options
+    }
+
+    addPhase = () => {
+        fetch('/api/phases', {
+            method: 'POST',
+            headers: new Headers({ 'content-type': 'application/json' }),
+            body: JSON.stringify({phases: this.state.phases + 1}),
+        })
+
+        this.setState({phases: this.state.phases + 1},()=>this.generateOptions())
+        
+
+    }
+
+    removePhase = () =>{
+        fetch('/api/phases', {
+            method: 'POST',
+            headers: new Headers({ 'content-type': 'application/json' }),
+            body: JSON.stringify({phases: this.state.phases - 1}),
+        })
+
+        this.setState({phases: this.state.phases - 1},()=>this.generateOptions())
+        
+
+    }
+
+    createColumn = () => {
+
+        let id = `column${this.state.initialData.columnOrder.length + 1}`
+        const newCol = {
+            id : id,
+            name: 'new column'
+        }
+
+        const newColumnOrder = this.state.initialData.columnOrder
+        newColumnOrder.push(id)
+      
+        
+
+        const newData = {
+            ...this.state.initialData,
+            columns:{
+                ...this.state.initialData.columns,
+                [id]: newCol
+            }
+
+        }
+
+        fetch('/api/columns', {
+            method: 'POST',
+            headers: new Headers({ 'content-type': 'application/json' }),
+            body: JSON.stringify(newCol),
+        })
+
+         this.setState({initialData: newData})
+    }
+
+    removeColumn = (id) => {
+        const data = this.state.initialData
+        delete data.columns[id]
+        let index = 0
+        data.columnOrder.forEach((col,pos) => {
+            if(col === id){
+                index = pos
+                return
+            }
+        })
+
+        data.columnOrder.splice(index, 1)
+        this.setState({initialData: data})
+
+
+
+    }
+
     // capitalizeFirstLetter= (word)=>{
     //     return word.charAt(0).toUpperCase() + word.slice(1);
     // }
     render() {
+        console.log(this.state)
         const x=Object.keys(this.state.initialData.tasks).map(elem=> this.state.initialData.tasks[elem])
         let y=[]
         let i=1
@@ -460,7 +596,7 @@ class Board extends React.Component {
             //eslint-disable-next-line
             x.forEach( (elem) => {
                 if (elem.stage===`column${i}`)
-                y.push({Task: elem.content, Points: elem.points, Status:this.changeColumntoStatus(elem.stage)})
+                y.push({Task: elem.content, Points: elem.points, Status:this.changeColumntoStatus(elem.stage), Link:elem.link, Sprint:elem.sprint})
             })
             i=i+1
         }
@@ -501,6 +637,12 @@ class Board extends React.Component {
                         <Button style={{marginLeft:"20px"}} variant="success" onClick={() => this.handleShow()}>
                             <FontAwesomeIcon icon={faPlusCircle}/> Add Task
                         </Button>
+                        <Button style={{marginLeft:"20px"}} variant="success" onClick={() => this.addPhase()}>
+                            <FontAwesomeIcon icon={faPlusCircle}/> Add Phase
+                        </Button>
+                        <Button style={{marginLeft:"20px"}} variant="danger" onClick={() => this.removePhase()}>
+                            <FontAwesomeIcon icon={faMinusCircle}/> Remove Phase
+                        </Button>
                     </Nav>
                         <div style={{float:"right"}}>
                             <DropDown
@@ -508,6 +650,20 @@ class Board extends React.Component {
                                 list={this.state.dropDownList}
                                 onChange={(selectedItem) => { this.setState({ dropDownSelected: selectedItem.label }, this.handleFilter(selectedItem.label))}}
                                 placeholder={`Phase: ${this.state.dropDownSelected}`}/>
+
+                                {/* <Dropdown style={{background: 'white'}}>
+                                    <Dropdown.Toggle variant="success" id="dropdown-basic">
+                                        Phase : {this.state.selectedPhase > 0 ? this.state.selectedPhase : 'All'}
+                                    </Dropdown.Toggle>
+
+                                    <Dropdown.Menu>
+                                        {this.generateOptions(this.state.phases)}
+                                        <Dropdown.Divider/>
+                                        <Dropdown.Item as="button" name={0} onClick={this.handleFilter}> All </Dropdown.Item>
+
+                                    </Dropdown.Menu>
+
+                                </Dropdown> */}
                         </div>
                 </Navbar>
                 <Loader toggle={!this.state.dataRetrieved} fullscreen={true}/>
@@ -520,6 +676,7 @@ class Board extends React.Component {
                    <div className='containerbox'>
                        {this.state.initialData.columnOrder.map(columnId => {
                            const column = this.state.initialData.columns[columnId]
+                           console.log(">>>>>>>>>>>>>>>", column)
 
                            const tasks = []
                            const taskIds = Object.keys(this.state.initialData.tasks)
@@ -536,6 +693,8 @@ class Board extends React.Component {
                            
                            return <Column key={column.id} column={column}  submit={(res) => this.submitStory(res)}
                                id={columnId}
+                               removeCol={(id) => this.removeColumn(id)}
+                               numberOfPhases={this.state.phases}
                                tasks={tasks.sort(this.compareRelativePosition)}
                                allowDrag={this.state.showFiltered}
                                remove ={this.removeTask} color={this.state.colors[Number(column.id.slice(-1))-1]} colorChange={(index, colour) => this.colorChange(index, colour)}/>
@@ -544,14 +703,19 @@ class Board extends React.Component {
                    </div>
                </DragDropContext>
 
-               
+               <button onClick={this.createColumn}> Add column</button>
+
+               <button type="button" className="btn btn-primary btn-circle btn-xl bottom-right" onClick={() => this.handleShow()}><strong>+</strong></button>
+               {/* <button onClick={this.addPhase}> Add phase</button>
+               <button onClick={this.removePhase}> Remove phase</button> */}
+
+               {/* <button type="button" class="btn btn-primary btn-circle btn-xl bottom-right" onClick={() => this.handleShow()}><strong>+</strong></button> */}
                <div className="square">
                    <h1>Current Status</h1>
                    {/* <Chart2 state={this.state.initialData} totals={this.state.totals}/> */}
                    {this.state.showChart ? <Chart state={this.state.initialData}  colors={this.state.colors}/> : null}
                </div>
 
-               {/* <button type="button" class="btn btn-primary btn-circle btn-xl bottom-right" onClick={() => this.handleShow()}>+</button> */}
                         <Modal size='sm' show={this.state.showAdd} onHide={this.handleClose}>
 
                             <Modal.Header closeButton>
@@ -560,11 +724,14 @@ class Board extends React.Component {
 
                             <Modal.Body>
                                 <SubmissionForm
+                                    numberOfPhases={this.state.phases}
                                     submit={(res) => this.submitStory(res)}
                                     close={() => this.handleClose()} />
                             </Modal.Body>
 
                         </Modal>
+
+                        
 
                     </>
 

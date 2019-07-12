@@ -25,11 +25,11 @@
     "xlsx": "^0.14.3"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "run-p server reactStart",
+    "reactStart": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "server": "cd server && node index.js",
-    "dev": "run-p server start",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {

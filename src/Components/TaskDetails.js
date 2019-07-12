@@ -8,6 +8,8 @@ class SubmissionForm extends React.Component{
         name: this.props.name ? this.props.name : '',
         points: this.props.points ? this.props.points : 0,
         phase: this.props.phase ? this.props.phase : '',
+        link: this.props.link? this.props.link : '',
+        sprint: this.props.sprint? this.props.sprint : 0,
         err:{
             name:'',
             points:''
@@ -28,7 +30,9 @@ class SubmissionForm extends React.Component{
             name: this.state.name,
             points:this.state.points,
             columnId: this.props.columnId, 
-            phase: Number(this.state.phase)
+            phase: Number(this.state.phase),
+            sprint: Number(this.state.sprint),
+            link: this.state.link
         }
         this.props.edit(editedTask)
     }
@@ -37,9 +41,22 @@ class SubmissionForm extends React.Component{
         e.preventDefault()
         this.props.delete()
     }
+
+    generateOptions = () => {
+        const options = []
+        let current = 1
+        while(current <= this.props.numberOfPhases){
+            
+            options.push( <option value={current} selected={this.state.phase === current ? "selected" : ''}>{current}</option>)
+            current +=1
+        }
+        
+        return options
+    }
   
   
   render(){
+      console.log(this.props)
     return(
         <>
             <Form>
@@ -53,13 +70,21 @@ class SubmissionForm extends React.Component{
                     <Form.Control type='number' rows='1' defaultValue={this.state.points}/>
                 </Form.Group>
 
+                <Form.Group controlId='sprint' onChange={this.handleChange}>
+                    <Form.Label>Sprint Number</Form.Label>
+                    <Form.Control type='number' rows='1' defaultValue={this.state.sprint}/>
+                </Form.Group>
+
                 <Form.Group controlId="phase" onChange={this.handleChange}>
                         <Form.Label>Phase</Form.Label>
                         <Form.Control as="select">
-                            <option value={1} selected={this.state.phase === 1 ? "selected" : ''}>1</option>
-                            <option value={2} selected={this.state.phase === 2 ? "selected" : ''}>2</option>
-                            <option value={3} selected={this.state.phase === 3 ? "selected" : ''}>3</option>
+                            {this.generateOptions()}
                         </Form.Control>
+                </Form.Group>
+
+                <Form.Group controlId='link' onChange={this.handleChange}>
+                        <Form.Label>Jira Link</Form.Label>
+                        <Form.Control type='text' rows='1' defaultValue={this.state.link}/>
                 </Form.Group>
 
                 <div style={{ "display": "flex", "justifyContent": "space-between" }}>

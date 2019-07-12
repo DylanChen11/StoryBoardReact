@@ -1,9 +1,13 @@
 //if moving down, set all above to -1. if moving up, sett all below to +1
 
 var fs = require('fs');
-var data = fs.readFileSync('./tasks.JSON', 'utf8');
-var TASKS = JSON.parse(data);
-console.log(TASKS)
+const _tasks = fs.readFileSync('./tasks.JSON', 'utf8');
+const _phases = fs.readFileSync('./phases.JSON', 'utf8');
+const _columns = fs.readFileSync('./columns.JSON', 'utf8');
+var TASKS = JSON.parse(_tasks);
+var PHASES = JSON.parse(_phases);
+var COLUMNS = JSON.parse(_columns);
+console.log(TASKS, COLUMNS, PHASES);
 const express = require('express');
 
 const app = express();
@@ -31,9 +35,9 @@ function sendTasks(request, response) {
   response.send(tasksToSend);
 }
 
-function writeToFile() {
-  const JSONTasks = JSON.stringify(TASKS)
-  fs.writeFile("./tasks.JSON", JSONTasks, (err) => {
+function writeToFile(filename, obj) {
+  const JSONToWrite = JSON.stringify(obj)
+  fs.writeFile(filename, JSONToWrite, (err) => {
     if (err) console.log(err);
     console.log("Successfully Written to File.");
   });
@@ -55,6 +59,29 @@ app.get('/api/greeting', (req, res) => {
 */
 app.get('/api/tasks', sendTasks);
 
+app.get('/api/phases', (req, res) => {
+  res.send(PHASES)
+})
+
+app.get('/api/columns', (req, res) => {
+  const id = req.query.id;
+  console.log(id)
+  if (id !== undefined){
+    const foundColumn = COLUMNS.columns.find(column => column.id === id)
+    if (foundColumn !== undefined) {
+      res.send(foundColumn)
+    }
+
+    else {
+      res.status(404).send({
+        message: 'Column ID not found'
+     });
+    }
+  }
+  else {
+    res.send(COLUMNS.columns);
+  }
+})
 
 /** POST */
 /** For adding a new task. Takes a JSON object as parameter and adds it to tasks 
@@ -74,7 +101,7 @@ app.get('/api/tasks', sendTasks);
 app.post('/api/tasks', (req, res) => {
   let newTask = req.body
   console.log("GOT TASK >", newTask)
-  if (newTask && (newTask.id || newTask.id === 0)) {
+  if (newTask !== undefined) {
     //check if task already inside, if yes then overide else push the new task
     let taskIndex = TASKS.findIndex(task => task.id === newTask.id)
     if (taskIndex >= 0) {
@@ -83,7 +110,7 @@ app.post('/api/tasks', (req, res) => {
     else {
       TASKS.push(newTask);
     }
-    writeToFile();
+    writeToFile("./tasks.JSON", TASKS);
   }
   res.send("ok");
 })
@@ -102,7 +129,47 @@ app.post('/api/save', (req, res) => {
         TASKS.push(newTask);
       }
     })
-    writeToFile();
+    writeToFile("./tasks.JSON", TASKS);
+  }
+  res.send("ok");
+})
+
+/** For updating the number of phases. Example of JSON object:
+ * {"phases": 7}
+ */
+app.post('/api/phases', (req, res) => {
+  let newPhase = req.body
+  console.log("GOT TASK >", newPhase)
+  if (newPhase !== undefined) {
+    PHASES = newPhase
+    writeToFile("./phases.JSON", PHASES);
+  }
+  res.send("ok");
+})
+
+/** For adding/updating a column. Takes a JSON object as parameter and adds it to columns 
+ * 
+ * Example of JSON object:
+ * 
+  {
+    "id": "column10",
+    "name": "TESTING123"
+  }
+ * If a column id is already in the array, it is overwritten instead of added
+*/
+app.post('/api/columns', (req, res) => {
+  let newColumn = req.body
+  console.log("GOT Column >", newColumn)
+  if (newColumn !== undefined) {
+    //check if task already inside, if yes then overide else push the new task
+    let columnIndex = COLUMNS.columns.findIndex(column => column.id === newColumn.id)
+    if (columnIndex >= 0) {
+      COLUMNS.columns[columnIndex] = newColumn
+    }
+    else {
+      COLUMNS.columns.push(newColumn);
+    }
+    writeToFile("./columns.JSON", COLUMNS);
   }
   res.send("ok");
 })
@@ -110,7 +177,7 @@ app.post('/api/save', (req, res) => {
 /** For resetting all data */
 app.post('/api/reset', (_, res) => {
   TASKS = []
-  writeToFile();
+  writeToFile("./tasks.JSON", TASKS);
   res.send("ok");
 })
 
@@ -124,7 +191,21 @@ app.delete('/api/tasks', (req, res) => {
   if (delIndex >= 0) {
     TASKS.splice(delIndex, 1);
     console.log("After Deleting >", TASKS)
-    writeToFile();
+    writeToFile("./tasks.JSON", TASKS);
+  }
+  res.send("ok");
+})
+
+/** For deleting a column. Takes a string of the column id to delete i.e. {"id:" : "column9"} */
+app.delete('/api/columns', (req, res) => {
+  let delTaskID = req.body.id
+  console.log("GOT COLUMN ID >", delTaskID)
+  let delIndex = COLUMNS.columns.findIndex(column => column.id === delTaskID)
+  console.log("Found at >", delIndex)
+  if (delIndex >= 0) {
+    COLUMNS.columns.splice(delIndex, 1);
+    console.log("After Deleting >", COLUMNS.columns)
+    writeToFile("./columns.JSON", COLUMNS);
   }
   res.send("ok");
 })

@@ -42,7 +42,7 @@ class Task extends React.Component {
               ref={provided.innerRef}
             >
               <h4 style={{ "display": "flex", "justifyContent": "space-between" }}>
-                {this.props.task.content.length > 11? this.props.task.content.slice(0,8)+ "...": this.props.task.content}
+                {this.props.task.content.length > 11? this.props.task.content.slice(0,11)+ "...": this.props.task.content}
                 {/* <Button style={{float:"right"}} variant="danger" onClick={this.handleDel}>
                         X
                       </Button> */}
@@ -61,10 +61,13 @@ class Task extends React.Component {
 
           <Modal.Body>
             <TaskDetails columnId={this.props.columnId} 
+              numberOfPhases={this.props.numberOfPhases}
               taskId={this.props.task.id}
               name={this.props.task.content}
               points={this.props.task.points}
               phase={this.props.task.phase}
+              link={this.props.task.link}
+              sprint={this.props.task.sprint}
               delete={() => this.handleDel()}
               edit={(editedTask) => this.handleEdit(editedTask)} />
           </Modal.Body>
